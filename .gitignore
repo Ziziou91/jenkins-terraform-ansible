@@ -1,4 +1,5 @@
 *terraform*
-variable.tf
+terraform.tfvars
+
 inventory
 inventory.yml

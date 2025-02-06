@@ -4,10 +4,10 @@ provider "aws" {
 
 # ==== NETWORKING ====
 resource "aws_vpc" "app-vpc" {
-  cidr_block = var.vpc_cidr_block
+  cidr_block = var.vpc.cidr_block
   
   tags = {
-    Name = var.vpc_name
+    Name = var.vpc.name
   }
 }
 
@@ -19,53 +19,50 @@ resource "aws_route_table" "app-route-table" {
   vpc_id = aws_vpc.app-vpc.id
 
   route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.gw.id
+    cidr_block      = var.route_table.ip4_cidr_block
+    gateway_id      = aws_internet_gateway.gw.id
   }
   route {
-    ipv6_cidr_block = "::/0"
-    gateway_id = aws_internet_gateway.gw.id
+    ipv6_cidr_block = var.route_table.ipv6_cidr_block
+    gateway_id      = aws_internet_gateway.gw.id
   }
 
   tags = {
-    Name  = var.route_table_name
+    Name  = var.route_table.name
   }
 }
 
 resource "aws_subnet" "jenkins-subnet" {
-  vpc_id     = aws_vpc.app-vpc.id
-  cidr_block = var.jenkins_subnet_cidr_block
-  availability_zone = "eu-west-2a"
+  vpc_id            = aws_vpc.app-vpc.id
+  cidr_block        = var.jenkins_subnet.cidr_block
+  availability_zone = var.jenkins_subnet.availability_zone
   
   tags = {
-    Name = var.jenkins_subnet_name
+    Name = var.jenkins_subnet.name
   }
 }
 
+# ====== ASSOCIATE SUBNET WITH ROUTE TABLE ======
 resource "aws_route_table_association" "a" {
-  subnet_id = aws_subnet.jenkins-subnet.id
-  route_table_id = aws_route_table.app-route-table.id
+  subnet_id       = aws_subnet.jenkins-subnet.id
+  route_table_id  = aws_route_table.app-route-table.id
 }
  
 resource "aws_security_group" "jenkins_sg" {
-  name        = var.jenkins_sg_name
-  description = "Allow Jenkins and SSH access"
+  name        = var.jenkins_sg.name
+  description = var.jenkins_sg.description
   vpc_id      = aws_vpc.app-vpc.id
-
-  ingress {
-    description = "SSH"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "Jenkins"
-    from_port   = 8080
-    to_port     = 8080
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+  
+  dynamic "ingress" {
+    # iterate over dynamic ingress values to create ingress rules
+    for_each = var.jenkins_sg.ingress
+    content {
+      description = ingress.value.description
+      from_port   = ingress.value.from_port
+      to_port     = ingress.value.to_port
+      protocol    = ingress.value.protocol
+      cidr_blocks = ingress.value.cidr_blocks
+    }
   }
 
   egress {
@@ -76,45 +73,34 @@ resource "aws_security_group" "jenkins_sg" {
   }
 
   tags = {
-    Name = "jenkins-sg"
+    Name = var.jenkins_sg.tag
   }
 }
 
-# ==== EC2 INSTANCE ====
+# ====== EC2 INSTANCE ======
 resource "aws_instance" "jenkins_server" {
-  ami           = var.jenkins_server_ami
-  instance_type = "t2.micro"
-  availability_zone = "eu-west-2a"
+  ami                         = var.jenkins_server.ami
+  instance_type               = var.jenkins_server.instance_type
+  availability_zone           = var.jenkins_server.availability_zone
 
-
-  key_name      = var.jenkins_server_ssh_key
+  key_name                    = var.jenkins_server.ssh_key
 
   subnet_id                   = aws_subnet.jenkins-subnet.id
   vpc_security_group_ids      = [aws_security_group.jenkins_sg.id]
   associate_public_ip_address = true
 
-  # User data script to install Ansible and Jenkins
-  user_data = <<-EOF
-              #!/bin/bash
-              yum update -y
-              
-              # Install Python
-              yum install -y python3 python3-pip
-
-              EOF
+  user_data = file(var.jenkins_server.user_data)
 
   tags = {
-    Name = "Jenkins-Ansible-Server"
+    Name = var.jenkins_server.name
   }
 
 }
-
-
 
 resource "null_resource" "run_ansible" {
   depends_on = [aws_instance.jenkins_server]
 
   provisioner "local-exec" {
-    command = "sleep 120 && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i '${aws_instance.jenkins_server.public_ip},' --private-key=${var.jenkins_server_private_key} -u ${var.jenkins_server_username} ${var.ansible_playbook}"
+    command = "sleep 120 && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i '${aws_instance.jenkins_server.public_ip},' --private-key=${var.jenkins_account.private_key} -u ${var.jenkins_account.username} ${var.jenkins_account.playbook}"
   }
 }
