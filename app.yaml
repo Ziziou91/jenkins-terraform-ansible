@@ -56,29 +56,29 @@
         state: started
         recreate: yes
         env:
-                  - name: DB_HOST
-                    value: mongodb
-                  - name: DB_NAME
-                    value: posts
-                  - name: DB_PASSWORD
-                    value: abcd
-                  - name: DB_PORT
-                    value: "27017"
-                  - name: DB_USER
-                    value: root
-                  - name: MONGODB_DATABASE
-                    value: posts
-                  - name: MONGODB_DOCKER_PORT
-                    value: "27017"
-                  - name: MONGODB_LOCAL_PORT
-                    value: "7017"
-                  - name: MONGODB_PASSWORD
-                    value: abcd
-                  - name: MONGODB_USER
-                    value: root
-                  - name: NODE_DOCKER_PORT
-                    value: "8080"
-                  - name: NODE_LOCAL_PORT
-                    value: "6868"
-                  ports:
-                  - containerPort: 8080
+          - name: DB_HOST
+            value: mongodb
+          - name: DB_NAME
+            value: posts
+          - name: DB_PASSWORD
+            value: abcd
+          - name: DB_PORT
+            value: "27017"
+          - name: DB_USER
+            value: root
+          - name: MONGODB_DATABASE
+            value: posts
+          - name: MONGODB_DOCKER_PORT
+            value: "27017"
+          - name: MONGODB_LOCAL_PORT
+            value: "7017"
+          - name: MONGODB_PASSWORD
+            value: abcd
+          - name: MONGODB_USER
+            value: root
+          - name: NODE_DOCKER_PORT
+            value: "8080"
+          - name: NODE_LOCAL_PORT
+            value: "6868"
+        ports:
+          - containerPort: 8080
