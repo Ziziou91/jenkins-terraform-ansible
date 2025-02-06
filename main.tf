@@ -32,30 +32,33 @@ resource "aws_route_table" "app-route-table" {
   }
 }
 
-resource "aws_subnet" "jenkins-subnet" {
+resource "aws_subnet" "subnet" {
+  for_each = var.subnets
+
   vpc_id            = aws_vpc.app-vpc.id
-  cidr_block        = var.jenkins_subnet.cidr_block
-  availability_zone = var.jenkins_subnet.availability_zone
+  cidr_block        = each.value.cidr_block
+  availability_zone = each.value.availability_zone
   
   tags = {
-    Name = var.jenkins_subnet.name
+    Name = each.value.name
   }
 }
 
 # ====== ASSOCIATE SUBNET WITH ROUTE TABLE ======
 resource "aws_route_table_association" "a" {
-  subnet_id       = aws_subnet.jenkins-subnet.id
+  subnet_id       = aws_subnet.subnet["jenkins"].id
   route_table_id  = aws_route_table.app-route-table.id
 }
  
-resource "aws_security_group" "jenkins_sg" {
-  name        = var.jenkins_sg.name
-  description = var.jenkins_sg.description
+resource "aws_security_group" "sg" {
+  for_each = var.security_groups 
+  name        = each.value.name
+  description = each.value.description
   vpc_id      = aws_vpc.app-vpc.id
   
   dynamic "ingress" {
     # iterate over dynamic ingress values to create ingress rules
-    for_each = var.jenkins_sg.ingress
+    for_each = each.value.ingress
     content {
       description = ingress.value.description
       from_port   = ingress.value.from_port
@@ -73,11 +76,11 @@ resource "aws_security_group" "jenkins_sg" {
   }
 
   tags = {
-    Name = var.jenkins_sg.tag
+    Name = each.value.tag
   }
 }
 
-# ====== EC2 INSTANCE ======
+# ====== EC2 INSTANCES ======
 resource "aws_instance" "jenkins_server" {
   ami                         = var.jenkins_server.ami
   instance_type               = var.jenkins_server.instance_type
@@ -85,8 +88,8 @@ resource "aws_instance" "jenkins_server" {
 
   key_name                    = var.jenkins_server.ssh_key
 
-  subnet_id                   = aws_subnet.jenkins-subnet.id
-  vpc_security_group_ids      = [aws_security_group.jenkins_sg.id]
+  subnet_id                   = aws_subnet.subnet[var.jenkins_server.subnet].id
+  vpc_security_group_ids      = [for sg in var.jenkins_server.security_groups : aws_security_group.sg[sg].id]
   associate_public_ip_address = true
 
   user_data = file(var.jenkins_server.user_data)
@@ -97,10 +100,38 @@ resource "aws_instance" "jenkins_server" {
 
 }
 
-resource "null_resource" "run_ansible" {
+resource "aws_instance" "node_server" {
+  ami                         = var.node_server.ami
+  instance_type               = var.node_server.instance_type
+  availability_zone           = var.node_server.availability_zone
+
+  key_name                    = var.node_server.ssh_key
+
+  subnet_id                   = aws_subnet.subnet[var.node_server.subnet].id
+  vpc_security_group_ids      = [for sg in var.node_server.security_groups : aws_security_group.sg[sg].id]
+  associate_public_ip_address = true
+
+  user_data = file(var.jenkins_server.user_data)
+
+  tags = {
+    Name = var.jenkins_server.name
+  }
+
+}
+
+
+resource "null_resource" "run_ansible_jenkins" {
   depends_on = [aws_instance.jenkins_server]
 
   provisioner "local-exec" {
     command = "sleep 120 && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i '${aws_instance.jenkins_server.public_ip},' --private-key=${var.jenkins_account.private_key} -u ${var.jenkins_account.username} ${var.jenkins_account.playbook}"
+  }
+}
+
+resource "null_resource" "run_ansible_docker" {
+  depends_on = [aws_instance.node_server]
+
+  provisioner "local-exec" {
+    command = "sleep 120 && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i '${aws_instance.node_server.public_ip},' --private-key=${var.jenkins_account.private_key} -u ${var.jenkins_account.username} ${var.docker_playbook}"
   }
 }

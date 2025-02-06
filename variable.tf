@@ -13,16 +13,16 @@ variable "route_table" {
     })
 }
 
-variable "jenkins_subnet" {
-    type = object({
+variable "subnets" {
+    type = map(object({
         name                = string
         cidr_block          = string
         availability_zone   = string
-    })
+    }))
 }
 
-variable "jenkins_sg" {
-    type = object({
+variable "security_groups" {
+    type = map(object({
         name = string
         description = string
 
@@ -35,7 +35,7 @@ variable "jenkins_sg" {
         }))
 
         tag = string
-    })
+    }))
 }
 
 variable "jenkins_server" {
@@ -46,6 +46,23 @@ variable "jenkins_server" {
         instance_type       = string
         user_data           = string
         ssh_key             = string
+        security_groups     = list(string)
+        subnet              = string    
+
+    })
+}
+
+variable "node_server" {
+    type = object({
+        name                = string
+        ami                 = string
+        availability_zone   = string
+        instance_type       = string
+        user_data           = string
+        ssh_key             = string
+        security_groups = list(string)
+        subnet              = string    
+
     })
 }
 
@@ -55,4 +72,8 @@ variable "jenkins_account"  {
         username    = string
         playbook    = string
     })
+}
+
+variable "docker_playbook" {
+    type = string
 }
