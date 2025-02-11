@@ -49,6 +49,11 @@ resource "aws_route_table_association" "a" {
   subnet_id       = aws_subnet.subnet["jenkins"].id
   route_table_id  = aws_route_table.app-route-table.id
 }
+
+resource "aws_route_table_association" "b" {
+  subnet_id       = aws_subnet.subnet["node"].id
+  route_table_id  = aws_route_table.app-route-table.id
+}
  
 resource "aws_security_group" "sg" {
   for_each = var.security_groups 
@@ -114,11 +119,12 @@ resource "aws_instance" "node_server" {
   user_data = file(var.jenkins_server.user_data)
 
   tags = {
-    Name = var.jenkins_server.name
+    Name = var.node_server.name
   }
 
 }
 
+# ====== ANSIBLE PLAYBOOKS ======
 
 resource "null_resource" "run_ansible_jenkins" {
   depends_on = [aws_instance.jenkins_server]

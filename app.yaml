@@ -6,79 +6,72 @@
     container_name: "server-container"
 
   tasks:
-    - name: Update apt cache
-      apt:
+    - name: Update all packages
+      yum:
+        name: '*'
+        state: latest
         update_cache: yes
 
+    - name: Install EPEL repository
+      amazon.aws.ec2_extras:
+        state: present
+        name: epel
+
     - name: Install required packages
-      apt:
+      yum:
         name:
-          - apt-transport-https
-          - ca-certificates
-          - curl
-          - software-properties-common
+          - yum-utils
+          - device-mapper-persistent-data
+          - lvm2
         state: present
 
-    - name: Add Docker's official GPG key
-      apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
-
-    - name: Set up Docker repository
-      apt_repository:
-        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable
-        state: present
+    - name: Add Docker repository
+      command: yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 
     - name: Install Docker CE
-      apt:
+      yum:
         name: 
           - docker-ce
           - docker-ce-cli
           - containerd.io
-        state: latest
-        update_cache: yes
+        state: present
 
-    - name: Ensure Docker service is running
+    - name: Start and enable Docker service
       systemd:
         name: docker
         state: started
         enabled: yes
 
+    - name: Add ec2-user to docker group
+      user:
+        name: ec2-user
+        groups: docker
+        append: yes
+
     - name: Pull Docker image from registry
-      docker_image:
+      community.docker.docker_image:
         name: "{{ docker_image }}"
         source: pull
+        force_source: yes
 
     - name: Run Docker container
-      docker_container:
+      community.docker.docker_container:
         name: "{{ container_name }}"
         image: "{{ docker_image }}"
         state: started
         recreate: yes
         env:
-          - name: DB_HOST
-            value: mongodb
-          - name: DB_NAME
-            value: posts
-          - name: DB_PASSWORD
-            value: abcd
-          - name: DB_PORT
-            value: "27017"
-          - name: DB_USER
-            value: root
-          - name: MONGODB_DATABASE
-            value: posts
-          - name: MONGODB_DOCKER_PORT
-            value: "27017"
-          - name: MONGODB_LOCAL_PORT
-            value: "7017"
-          - name: MONGODB_PASSWORD
-            value: abcd
-          - name: MONGODB_USER
-            value: root
-          - name: NODE_DOCKER_PORT
-            value: "8080"
-          - name: NODE_LOCAL_PORT
-            value: "6868"
-        ports:
-          - containerPort: 8080
+          DB_HOST: mongodb
+          DB_NAME: posts
+          DB_PASSWORD: abcd
+          DB_PORT: "27017"
+          DB_USER: root
+          MONGODB_DATABASE: posts
+          MONGODB_DOCKER_PORT: "27017"
+          MONGODB_LOCAL_PORT: "7017"
+          MONGODB_PASSWORD: abcd
+          MONGODB_USER: root
+          NODE_DOCKER_PORT: "8080"
+          NODE_LOCAL_PORT: "6868"
+        published_ports:
+          - "8080:8080"
