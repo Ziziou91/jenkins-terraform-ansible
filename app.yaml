@@ -12,11 +12,6 @@
         state: latest
         update_cache: yes
 
-    - name: Install EPEL repository
-      amazon.aws.ec2_extras:
-        state: present
-        name: epel
-
     - name: Install required packages
       yum:
         name:
@@ -25,16 +20,19 @@
           - lvm2
         state: present
 
-    - name: Add Docker repository
-      command: yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-
-    - name: Install Docker CE
+    - name: Install Docker
       yum:
-        name: 
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
+        name: docker
         state: present
+  
+    - name: Install Python and pip
+      yum:
+        name: "{{ item }}"
+        state: present
+      become: true
+      loop:
+        - python3
+        - python3-pip
 
     - name: Start and enable Docker service
       systemd:

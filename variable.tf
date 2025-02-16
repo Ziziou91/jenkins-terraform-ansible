@@ -66,6 +66,20 @@ variable "node_server" {
     })
 }
 
+variable "monitoring_server" {
+    type = object({
+        name                = string
+        ami                 = string
+        availability_zone   = string
+        instance_type       = string
+        user_data           = string
+        ssh_key             = string
+        security_groups = list(string)
+        subnet              = string    
+
+    })
+}
+
 variable "jenkins_account"  {
     type = object({
         private_key = string
@@ -75,5 +89,9 @@ variable "jenkins_account"  {
 }
 
 variable "docker_playbook" {
+    type = string
+}
+
+variable "monitoring_playbook" {
     type = string
 }

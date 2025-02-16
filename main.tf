@@ -46,15 +46,14 @@ resource "aws_subnet" "subnet" {
 
 # ====== ASSOCIATE SUBNET WITH ROUTE TABLE ======
 resource "aws_route_table_association" "a" {
-  subnet_id       = aws_subnet.subnet["jenkins"].id
+  for_each        = aws_subnet.subnet
+
+  subnet_id       = each.value.id
   route_table_id  = aws_route_table.app-route-table.id
+
 }
 
-resource "aws_route_table_association" "b" {
-  subnet_id       = aws_subnet.subnet["node"].id
-  route_table_id  = aws_route_table.app-route-table.id
-}
- 
+# ====== CREATE SECURITY GROUPS ======
 resource "aws_security_group" "sg" {
   for_each = var.security_groups 
   name        = each.value.name
@@ -102,7 +101,6 @@ resource "aws_instance" "jenkins_server" {
   tags = {
     Name = var.jenkins_server.name
   }
-
 }
 
 resource "aws_instance" "node_server" {
@@ -121,7 +119,24 @@ resource "aws_instance" "node_server" {
   tags = {
     Name = var.node_server.name
   }
+}
 
+resource "aws_instance" "monitoring_server" {
+  ami                         = var.monitoring_server.ami
+  instance_type               = var.monitoring_server.instance_type
+  availability_zone           = var.monitoring_server.availability_zone
+
+  key_name                    = var.monitoring_server.ssh_key
+  
+  subnet_id                   = aws_subnet.subnet[var.monitoring_server.subnet].id
+  vpc_security_group_ids      = [for sg in var.monitoring_server.security_groups : aws_security_group.sg[sg].id]
+  associate_public_ip_address = true
+
+  user_data = file(var.monitoring_server.user_data)
+
+  tags = {
+    Name = var.monitoring_server.name
+  }
 }
 
 # ====== ANSIBLE PLAYBOOKS ======
@@ -141,3 +156,11 @@ resource "null_resource" "run_ansible_docker" {
     command = "sleep 120 && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i '${aws_instance.node_server.public_ip},' --private-key=${var.jenkins_account.private_key} -u ${var.jenkins_account.username} ${var.docker_playbook}"
   }
 }
+
+//resource "null_resource" "run_ansible_grafana" {
+//  depends_on = [aws_instance.node_server]
+//
+//  provisioner "local-exec" {
+//    command = "sleep 120 && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i '${aws_instance.grafana_server.public_ip},' --private-key=${var.jenkins_account.private_key} -u ${var.jenkins_account.username} ${var.grafana_playbook}"
+//  }
+//}
