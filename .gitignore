@@ -1,5 +1,7 @@
 *terraform*
 terraform.tfvars
 
+.DS_Store
+
 inventory
 inventory.yml
