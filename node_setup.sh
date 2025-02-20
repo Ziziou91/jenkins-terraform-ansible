@@ -1,20 +1,23 @@
 #!/bin/bash
 
-cd node-test-app/
+echo "DB_HOST=mongodb://${db_ip}:27017/posts" | sudo tee -a /etc/environment
+source /etc/environment
+echo "DB_HOST is set to: $DB_HOST"
+
+
+cd /
+
+cd /node-test-app
+
+sudo npm install -y
+
+pm2 stop app
 pm2 start app.js
-
-
-# yum update -y
-
-# # Install Python
-# yum install -y python3 python3-pip
-
 
 # # Create user monitoring with no password
 # sudo su
 # useradd -m -s /bin/bash monitoring
 # cd /home/monitoring
-
 
 # # Download the latest node-exporter tar file from official documentation
 # wget https://github.com/prometheus/node_exporter/releases/download/v1.2.2/node_exporter-1.2.2.linux-amd64.tar.gz
@@ -35,6 +38,5 @@ pm2 start app.js
 # WantedBy=default.target
 # EOT
 
-# systemctl daemon-reload
-# systemctl start node_exporter
-# systemctl enable node_exporter
+systemctl daemon-reload
+systemctl restart node_exporter

@@ -1,43 +1,34 @@
-variable "vpc" {
+# =============APPLICATION LOAD BALANCER=============
+variable "alb" {
     type = object({
-        name = string
-        cidr_block = string
-    })
-}
-
-variable "route_table" {
-    type = object({
-        name = string
-        ip4_cidr_block = string
-        ipv6_cidr_block = string
-    })
-}
-
-variable "subnets" {
-    type = map(object({
         name                = string
-        cidr_block          = string
-        availability_zone   = string
-    }))
+        load_balancer_type  = string
+        security_groups     = list(string)
+        subnet_1              = string    
+        subnet_2              = string    
+    })
 }
 
-variable "security_groups" {
-    type = map(object({
-        name = string
-        description = string
-
-        ingress = list(object({
-            description = string
-            from_port = number
-            to_port = number
-            protocol = string
-            cidr_blocks = list(string)
-        }))
-
-        tag = string
-    }))
+variable "alb_target_group" {
+    type = object({
+        name                = string
+        port                = number
+        protocol            = string
+        hc_path             = string
+        hc_port             = string
+    })
 }
 
+variable "alb_listener" {
+    type = object({
+        port                = number
+        protocol            = string
+        da_type             = string
+    })
+}
+
+
+# =============EC2 INSTANCES=============
 variable "jenkins_server" {
     type = object({
         name                = string
@@ -77,6 +68,18 @@ variable "monitoring_server" {
         security_groups = list(string)
         subnet              = string    
 
+    })
+}
+
+variable "db" {
+    type = object({
+        name                = string
+        ami                 = string
+        availability_zone   = string
+        instance_type       = string
+        ssh_key             = string
+        security_groups     = list(string)
+        subnet              = string
     })
 }
 
