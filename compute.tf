@@ -29,7 +29,7 @@ resource "aws_instance" "node_server" {
   key_name                    = var.node_server.ssh_key
 
   subnet_id                   = aws_subnet.subnet[var.node_server.subnet].id
-  vpc_security_group_ids      = [aws_security_group.app_sg.id]
+  vpc_security_group_ids      = [for sg in var.node_server.security_groups : aws_security_group.sg[sg].id]
   associate_public_ip_address = true
 
   user_data = templatefile(var.node_server.user_data, {
@@ -53,7 +53,6 @@ resource "aws_instance" "monitoring_server" {
   
   subnet_id                   = aws_subnet.subnet[var.monitoring_server.subnet].id
   vpc_security_group_ids      = [for sg in var.monitoring_server.security_groups : aws_security_group.sg[sg].id]
-  associate_public_ip_address = true
 
   user_data = file(var.monitoring_server.user_data)
 
@@ -86,7 +85,9 @@ resource "aws_lb" "app_lb" {
   name               = var.alb.name
   internal           = false
   load_balancer_type = var.alb.load_balancer_type
-  security_groups    = [aws_security_group.alb_sg.id]
+  security_groups    = [for sg in var.alb.security_groups : aws_security_group.sg[sg].id] 
+
+
   subnets            = [aws_subnet.subnet[var.alb.subnet_1].id, aws_subnet.subnet[var.alb.subnet_2].id]
   depends_on         = [
     aws_internet_gateway.gw,
@@ -124,7 +125,7 @@ resource "aws_launch_template" "app" {
   network_interfaces {
     associate_public_ip_address = false
     subnet_id                   = aws_subnet.subnet[var.node_server.subnet].id
-    security_groups             = [aws_security_group.app_sg.id] 
+    security_groups             = [for sg in var.node_server.security_groups : aws_security_group.sg[sg].id] 
  
   }
 
