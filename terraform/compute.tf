@@ -73,7 +73,7 @@ resource "aws_instance" "database" {
     vpc_security_group_ids = [for sg in var.db.security_groups : aws_security_group.sg[sg].id]    
     associate_public_ip_address = true
     
-    user_data = file("db_setup.sh")
+    user_data = file("../scripts/db_setup.sh")
     
     tags = {
         Name = var.db.name
